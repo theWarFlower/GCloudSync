@@ -4,5 +4,9 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"docwriter.progress.trackClasses": true,
+		"docwriter.progress.trackMethods": true,
+		"docwriter.progress.trackFunctions": true
+	}
 }

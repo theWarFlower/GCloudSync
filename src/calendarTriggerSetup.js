@@ -1,4 +1,8 @@
 const SPREADSHEET_ID = '1HBtEvBRURIQIoPegA6BNeTBrkJ88gvprEb0TUJWBV20';
+/**
+ * The main function deletes all triggers in the current project, sets up new triggers, and logs
+ * updates accordingly.
+ */
 function main() {
   try {
     // Deletes all triggers in the current project.
@@ -10,11 +14,15 @@ function main() {
     setupTriggers();
     logUpdates('Main function executed successfully.');
   } catch (error) {
-    console.error('Error in main function:', error);
+    console.error('Error in main function:', error.message);
     logUpdates('Error in main function: ' + error.message);
   }
 }
-
+/**
+ * Get all calendars that start with "iP".
+ * @returns {string[]} An array of calendar IDs that start with "iP".
+ * @throws Will throw an error if the calendar fetching fails.
+ */
 function getCalendars() {
   try {
     const calendarList = CalendarApp.getAllCalendars();
@@ -28,7 +36,11 @@ function getCalendars() {
     return [];
   }
 }
-
+/**
+ * Sets up triggers for each calendar.
+  * @returns {void}
+  * @throws Will throw an error if the trigger setup fails.
+ */
 function setupTriggers() {
   try {
     const calendarIDs = getCalendars();
@@ -44,7 +56,15 @@ function setupTriggers() {
     logUpdates('Error setting up triggers: ' + error.message);
   }
 }
-
+/**
+ * This function handles new calendar events by logging updates, checking for valid
+ * calendar ID, retrieving events within a specific date range, and logging synchronization status.
+ * @param {object} e The event object that contains information about the calendar event.
+ * This function handles new calendar events.
+ * @returns {void}
+ * @throws Will throw an error if the event object is invalid.
+ * 
+ */
 function newCalendarEvent(e) {
   try {
     logUpdates('TRIGGER: ' + JSON.stringify(e));
@@ -65,7 +85,7 @@ function newCalendarEvent(e) {
     }
   } catch (error) {
     logUpdates('Error handling new calendar event: ' + error.message);
-    Logger.log('Error handling new calendar event:', error);
+    Logger.log('Error handling new calendar event: ', error.message);
   }
 }
 /**
@@ -136,6 +156,12 @@ function logSynchedEvents(calendarId, fullSync) {
   properties.setProperty('syncToken', events.nextSyncToken);
 }
 
+/**
+ * This function adjusts the start and end time of the event by adding one hour.
+ * @param {object} event - The event object to be adjusted.
+ * @returns {void}
+ * @throws Will throw an error if the event object is invalid.
+ */
 function adjustEvent(event) {
   const startTime = new Date(event.start.dateTime || event.start.date);
   const endTime = new Date(event.end.dateTime || event.end.date);
@@ -149,12 +175,17 @@ function adjustEvent(event) {
   endTime.setHours(endTime.getHours() + 1);
   
   logUpdates('Adjusted event: ' + event.id);
-  logUpdates('OLD START: ' + event.start.dateTime + ' NEW START: ' + startTime.toISOString());
-  // event.start.dateTime = startTime.toISOString();
-  // event.end.dateTime = endTime.toISOString();
+  logUpdates('OLD START: ' + event.start.dateTime + '\n' + 'NEW START: ' + startTime.toISOString());
+  event.start.dateTime = startTime.toISOString();
+  event.end.dateTime = endTime.toISOString();
 
 }
-
+/**
+ * 
+ * @param {object} e - The event object that contains information about the calendar event.
+ * This function logs the event details to a Google Sheet.
+ * @returns {void}
+ */
 function logEvents(e) {
   try {
     SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Events').appendRow([
@@ -165,7 +196,11 @@ function logEvents(e) {
     logUpdates('Error logging events: ' + error.message);
   }
 }
-
+/**
+ * Logs updates to a Google Sheet.
+ *
+ * @param {string} message
+ */
 function logUpdates(message) {
   try {
     SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Log').appendRow([new Date(), message]);

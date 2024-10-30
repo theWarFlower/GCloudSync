@@ -56,30 +56,6 @@ This project is a Google Apps Script that monitors multiple Google Calendars for
 
 ### Installation
 
-1. Clone the repository:
-
-```sh
-git clone https://github.com/your-repo/google-apps-script-calendar-monitor.git
-cd google-apps-script-calendar-monitor
-```
-
-2. Install dependencies:
-
-```sh
-npm install
-```
-
-3. Authenticate with Google CLASP:
-
-```sh
-npx clasp login
-```
-
-4. Push the code to Google Apps Script:
-
-```sh
-npm run deploy
-```
 
 ## Usage
 
@@ -152,20 +128,9 @@ npm run deploy
 - **Google CLASP:** Command-line utility for Google Apps Script.
 - **Prettier:** Code formatter.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Author
-
-[Amit Agarwal](https://www.labnol.org) - [Digital Inspiration](https://digitalinspiration.com/)
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
-
 ## Acknowledgments
 
+- [Amit Agarwal](https://www.labnol.org) - [Digital Inspiration](https://digitalinspiration.com/)
 - [Google Apps Script](https://developers.google.com/apps-script)
 - [Google Calendar API](https://developers.google.com/calendar)
 - [Google Sheets API](https://developers.google.com/sheets)
