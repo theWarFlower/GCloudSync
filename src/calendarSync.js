@@ -1,62 +1,5 @@
 const SPREADSHEET_ID = '1HBtEvBRURIQIoPegA6BNeTBrkJ88gvprEb0TUJWBV20';
 /**
- * The main function deletes all triggers in the current project, sets up new triggers, and logs
- * updates accordingly.
- */
-function main() {
-  try {
-    // Deletes all triggers in the current project.
-    const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
-      ScriptApp.deleteTrigger(trigger);
-      logUpdates('Deleted trigger: ' + trigger.getHandlerFunction() + ' for calendar: ' + trigger.getTriggerSourceId());
-    });
-    setupTriggers();
-    logUpdates('Main function executed successfully.');
-  } catch (error) {
-    console.error('Error in main function:', error.message);
-    logUpdates('Error in main function: ' + error.message);
-  }
-}
-/**
- * Get all calendars that start with "iP".
- * @returns {string[]} An array of calendar IDs that start with "iP".
- * @throws Will throw an error if the calendar fetching fails.
- */
-function getCalendars() {
-  try {
-    const calendarList = CalendarApp.getAllCalendars();
-    const filteredCalendars = calendarList.filter(cal => cal.getName().startsWith("iP"));
-    const calendarIDs = filteredCalendars.map(cal => cal.getId());
-    logUpdates('Fetched calendars: ' + JSON.stringify(calendarIDs));
-    return calendarIDs;
-  } catch (error) {
-    console.error('Error fetching calendars:', error);
-    logUpdates('Error fetching calendars: ' + error.message);
-    return [];
-  }
-}
-/**
- * Sets up triggers for each calendar.
-  * @returns {void}
-  * @throws Will throw an error if the trigger setup fails.
- */
-function setupTriggers() {
-  try {
-    const calendarIDs = getCalendars();
-    calendarIDs.forEach(calendarID => {
-      ScriptApp.newTrigger('newCalendarEvent')
-        .forUserCalendar(calendarID)
-        .onEventUpdated()
-        .create();
-      logUpdates('Trigger set up for calendar: ' + calendarID);
-    });
-  } catch (error) {
-    console.error('Error setting up triggers:', error);
-    logUpdates('Error setting up triggers: ' + error.message);
-  }
-}
-/**
  * This function handles new calendar events by logging updates, checking for valid
  * calendar ID, retrieving events within a specific date range, and logging synchronization status.
  * @param {object} e The event object that contains information about the calendar event.
@@ -171,13 +114,13 @@ function adjustEvent(event) {
     return;
   }
 
+  logUpdates('Adjusted event: ' + event.id);
+  logUpdates('OLD START: ' + event.start.dateTime + '\n' + 'NEW START: ' + startTime.toISOString());
+  
   startTime.setHours(startTime.getHours() + 1);
   endTime.setHours(endTime.getHours() + 1);
   
-  logUpdates('Adjusted event: ' + event.id);
-  logUpdates('OLD START: ' + event.start.dateTime + '\n' + 'NEW START: ' + startTime.toISOString());
-  event.start.dateTime = startTime.toISOString();
-  event.end.dateTime = endTime.toISOString();
+  logUpdates('OLD END: ' + event.end.dateTime + '\n' + 'NEW END: ' + endTime.toISOString());
 
 }
 /**
