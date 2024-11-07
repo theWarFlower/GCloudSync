@@ -11,10 +11,10 @@ const SPREADSHEET_ID = '1HBtEvBRURIQIoPegA6BNeTBrkJ88gvprEb0TUJWBV20';
 function newCalendarEvent(e) {
   try {
     logUpdates('TRIGGER: ' + JSON.stringify(e));
-    if (!calendar.id) {
+    if (!e.calendarId) {
       throw new Error('Invalid event object: ' + JSON.stringify(e));
     }
-    logSynchedEvents(calendar.id, false);
+    logSynchedEvents(e.calendarId, false);
 
   } catch (error) {
     logUpdates('Error handling new calendar event: ' + error.message);
@@ -89,7 +89,7 @@ function logSynchedEvents(calendarId, fullSync) {
         return;
       }
       logUpdates('ADJUSTING EVENT: ' + calEvent.summary)
-      let apiEvent = Calendar.Events.get(calendarID, calEvent.id)
+      let apiEvent = Calendar.Events.get(calendarId, calEvent.id)
       adjustEvent(calendarId, apiEvent);
     };
       pageToken = calEvents.nextPageToken;
@@ -113,36 +113,33 @@ function adjustEvent(calendarId, apiEvent) {
     logUpdates('Skipping all-day event: ' + apiEvent.summary);
     return;
   }
-  
+
   let startTime = new Date(apiEvent.start.dateTime);
   let endTime = new Date(apiEvent.end.dateTime);
-  console.log('Unmodified: ' + JSON.stringify(event))
+  console.log('Unmodified: ' + JSON.stringify(apiEvent))
 
   logUpdates('FOUND EVENT: ' + apiEvent.summary);
   logUpdates('OLD | START: ' + apiEvent.start.dateTime);
 
   startTime.setTime(startTime.getTime() + 3600000);
   endTime.setTime(endTime.getTime() + 3600000);
-
   apiEvent.start.dateTime = startTime.toISOString();
   apiEvent.end.dateTime = endTime.toISOString();
-
-  // event.setTime(startTime.toISOString(), endTime.toISOString());
 
   console.log('Modified: ' + JSON.stringify(apiEvent))
 
   try {
-    event = Calendar.Events.update(
-      apiEvent,
-      calendarId,
-      apiEvent.id,
-      {},
-      {'If-Match': event.etag}
-  );
-  logUpdates('NEW | START: ' + apiEvent.start.dateTime);
-  logUpdates('Event adjusted: ' + apiEvent.summary);
-  logEvents(apiEvent);
-  return;
+    //event = Calendar.Events.update(
+    //  apiEvent,
+    //  calendarId,
+    //  apiEvent.id,
+    //  {},
+    //  {'If-Match': apiEvent.etag}
+    //);
+    logUpdates('NEW | START: ' + apiEvent.start.dateTime);
+    logUpdates('Event adjusted: ' + apiEvent.summary);
+    logEvents(apiEvent);
+    return;
   } catch (e) {
     console.log('Fetch threw an exception: ' + e);
     logUpdates('FAILED TO ADJUST EVENT: ' + e);
@@ -158,7 +155,7 @@ function adjustEvent(calendarId, apiEvent) {
 function logEvents(e) {
   try {
     SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Events').appendRow([
-      new Date(), e.summary, e.calendarId, e.start.dateTime, e.end.dateTime
+      new Date(), e.calendarId, e.id, e.summary, e.start.dateTime, e.end.dateTime
     ]);
   } catch (error) {
     Logger.log('Error logging events:', error);
