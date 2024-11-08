@@ -6,29 +6,19 @@ const SPREADSHEET_ID = '1HBtEvBRURIQIoPegA6BNeTBrkJ88gvprEb0TUJWBV20';
  * This function handles new calendar events.
  * @returns {void}
  * @throws Will throw an error if the event object is invalid.
- * 
+ *
  */
 function newCalendarEvent(e) {
   try {
     logUpdates('TRIGGER: ' + JSON.stringify(e));
-    const calendarId = e.calendarId;
-    if (!calendarId) {
+    if (!e.calendarId) {
       throw new Error('Invalid event object: ' + JSON.stringify(e));
     }
+    logSynchedEvents(e.calendarId, false);
 
-    const calendar = CalendarApp.getCalendarById(calendarId);
-    const events = calendar.getEvents(new Date(), getRelativeDate(60,0)); 
-
-    if (events && events.length > 0) {
-      // event.setTitle('Updated: ' + event.getTitle());
-      logUpdates('SYNCHING: ' + calendar.getName());
-      logSynchedEvents(calendarId, false);
-    } else {
-      logUpdates('Events not found: ' + calendar.getName());
-    }
   } catch (error) {
     logUpdates('Error handling new calendar event: ' + error.message);
-    Logger.log('Error handling new calendar event: ', error.message);
+    Logger.log('Error handling new calendar event: ' + error.message);
   }
 }
 /**
@@ -38,16 +28,15 @@ function newCalendarEvent(e) {
  *     of the script.
  * @return {Date} The new date.
  */
-function getRelativeDate(daysOffset, hour) {
+function getRelativeDate(daysOffset, hoursOffset) {
   const date = new Date();
   date.setDate(date.getDate() + daysOffset);
-  date.setHours(hour);
+  date.setHours(date.getHours() + hoursOffset);
   date.setMinutes(0);
   date.setSeconds(0);
   date.setMilliseconds(0);
   return date;
 }
-
 
 /**
  * Retrieve and log events from the given calendar that have been modified
@@ -69,13 +58,17 @@ function logSynchedEvents(calendarId, fullSync) {
   } else {
     options.timeMin = getRelativeDate(-7, 0).toISOString();
   }
-  let events;
+  let calendar;
+  let calEvents;
   let pageToken;
   do {
     try {
       options.pageToken = pageToken;
-      events = Calendar.Events.list(calendarId, options);
-    } catch (e) { 
+      calendar = CalendarApp.getCalendarById(calendarId);
+      logUpdates('SYNCHING: ' + calendar.getName());
+      calEvents = Calendar.Events.list(calendarId, options);
+      logUpdates('EVENTS:', +calEvents.items)
+    } catch (e) {
       // Check to see if the sunc token was invalidated by the server
       // If so, reset the sync token and perform a full sync
       if (e.code === 410) {
@@ -86,15 +79,20 @@ function logSynchedEvents(calendarId, fullSync) {
       }
       throw new Error('Error retrieving events: ' + e.message);
     }
-    if (events.items && events.items.length === 0) {
+    if (calEvents.items && calEvents.items.length === 0) {
       logUpdates('No events found.');
       return;
     }
-    for (const event of events.items) {
-      adjustEvent(event);
-      logEvents(event);
+    for (const calEvent of calEvents.items) {
+      if (calEvent.status === 'cancelled') {
+        logUpdates('Event cancelled: ' + calEvent.id);
+        return;
+      }
+      logUpdates('ADJUSTING EVENT: ' + calEvent.summary)
+      let apiEvent = Calendar.Events.get(calendarId, calEvent.id)
+      adjustEvent(calendarId, apiEvent);
     };
-      pageToken = events.nextPageToken;
+      pageToken = calEvents.nextPageToken;
   } while (pageToken);
   properties.setProperty('syncToken', events.nextSyncToken);
 }
@@ -105,26 +103,51 @@ function logSynchedEvents(calendarId, fullSync) {
  * @returns {void}
  * @throws Will throw an error if the event object is invalid.
  */
-function adjustEvent(event) {
-  const startTime = new Date(event.start.dateTime || event.start.date);
-  const endTime = new Date(event.end.dateTime || event.end.date);
-
-  if (event.isAllDayEvent) {
-    logUpdates('Skipping all-day event: ' + event.id);
+function adjustEvent(calendarId, apiEvent) {
+  if (!apiEvent) {
+    logUpdates('Event not found!');
+    return;
+  }
+  
+  if (apiEvent.isAllDayEvent) {
+    logUpdates('Skipping all-day event: ' + apiEvent.summary);
     return;
   }
 
-  logUpdates('Adjusted event: ' + event.id);
-  logUpdates('OLD START: ' + event.start.dateTime + '\n' + 'NEW START: ' + startTime.toISOString());
-  
-  startTime.setHours(startTime.getHours() + 1);
-  endTime.setHours(endTime.getHours() + 1);
-  
-  logUpdates('OLD END: ' + event.end.dateTime + '\n' + 'NEW END: ' + endTime.toISOString());
+  let startTime = new Date(apiEvent.start.dateTime);
+  let endTime = new Date(apiEvent.end.dateTime);
+  console.log('Unmodified: ' + JSON.stringify(apiEvent))
 
+  logUpdates('FOUND EVENT: ' + apiEvent.summary);
+  logUpdates('OLD | START: ' + apiEvent.start.dateTime);
+
+  startTime.setTime(startTime.getTime() + 3600000);
+  endTime.setTime(endTime.getTime() + 3600000);
+  apiEvent.start.dateTime = startTime.toISOString();
+  apiEvent.end.dateTime = endTime.toISOString();
+
+  console.log('Modified: ' + JSON.stringify(apiEvent))
+
+  try {
+    //event = Calendar.Events.update(
+    //  apiEvent,
+    //  calendarId,
+    //  apiEvent.id,
+    //  {},
+    //  {'If-Match': apiEvent.etag}
+    //);
+    logUpdates('NEW | START: ' + apiEvent.start.dateTime);
+    logUpdates('Event adjusted: ' + apiEvent.summary);
+    logEvents(apiEvent);
+    return;
+  } catch (e) {
+    console.log('Fetch threw an exception: ' + e);
+    logUpdates('FAILED TO ADJUST EVENT: ' + e);
+  }
 }
+
 /**
- * 
+ *
  * @param {object} e - The event object that contains information about the calendar event.
  * This function logs the event details to a Google Sheet.
  * @returns {void}
@@ -132,7 +155,7 @@ function adjustEvent(event) {
 function logEvents(e) {
   try {
     SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Events').appendRow([
-      new Date(), e.calendarId
+      new Date(), e.calendarId, e.id, e.summary, e.start.dateTime, e.end.dateTime
     ]);
   } catch (error) {
     Logger.log('Error logging events:', error);
